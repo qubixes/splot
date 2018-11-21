@@ -1,0 +1,66 @@
+---
+title: "Splot: Quite the Useless Shiny App"
+author: "Qubixes"
+date: "11/21/2018"
+output: slidy_presentation
+framework: revealjs
+revealjs: {theme: moon}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+
+Splot is a toy application published on shinyapps.io. It's use is limited, except for the educational purposes of the author. Personally, I think 5 pages is way too much, so let's just stretch it out... 
+
+## Purpose and features
+
+- Visualizing the *mtcars* data set.
+- Fiting a linear spline.
+- Different x-axis (hp, cyl, disp, wt)
+- Use different factors such as (cyl, am) as colors of the points.
+- Get a F-statistic to find the best breaking point of the spline.
+
+## Server code
+
+```{r cars, echo = FALSE}
+library(shiny)
+library(ggplot2)
+data("mtcars")
+```
+
+The client code is quite uninteresting, so let's assume we loaded everything into the input variable:
+
+```{r, echo=TRUE}
+input = list(xbreak=150, xval="hp", col="cyl")
+```
+
+Then we have a (reactive) function that fits the model and returns a model with the linear spline and the data frame:
+
+```{r, echo=TRUE}
+    modelFit <- function(){
+        xspl <- ifelse(mtcars[,input$xval]>input$xbreak, mtcars[,input$xval]
+                       -input$xbreak, 0)
+        modelDF <- data.frame(mpg=mtcars$mpg, x=mtcars[,input$xval], 
+                              ones=rep(1,dim(mtcars)[1]), xspl=xspl)
+        list(lm(mpg~x+xspl+ones-1, data=modelDF), modelDF)
+    }
+```
+
+
+
+## The PLOT
+
+The plot is made using ggplot2, and with the previous values for the input we get:
+
+```{r, echo = FALSE}
+  mod <- modelFit()
+mydf <- data.frame(mod[[2]], ypred=suppressWarnings(predict(mod[[1]], mod[[2]])), col=factor(mtcars[,input$col]))
+      ggplot(data=mydf, aes(x=x, y=mpg))+
+        geom_point(aes(color=col))+
+        geom_line(color='blue', data=mydf, aes(x=x, y=ypred))+
+        labs(x=input$xval, colour=input$col)
+```
+
